@@ -230,7 +230,7 @@ class GatewayService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_tether_wifi)
+            .setSmallIcon(R.drawable.ic_gateway)
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)
