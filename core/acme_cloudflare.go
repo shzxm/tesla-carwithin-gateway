@@ -14,7 +14,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,15 +27,24 @@ import (
 
 const letsEncryptProdURL = "https://acme-v02.api.letsencrypt.org/directory"
 
+var cfAPIBaseURL = "https://api.cloudflare.com/client/v4"
+
 type cfClient struct {
-	token string
-	http  *http.Client
+	token   string
+	baseURL string
+	http    *http.Client
+}
+
+type CFZone struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 func newCFClient(token string) *cfClient {
 	return &cfClient{
-		token: strings.TrimSpace(token),
-		http:  &http.Client{Timeout: 20 * time.Second},
+		token:   strings.TrimSpace(token),
+		baseURL: cfAPIBaseURL,
+		http:    &http.Client{Timeout: 20 * time.Second},
 	}
 }
 
@@ -46,7 +57,7 @@ func (c *cfClient) doJSON(ctx context.Context, method, endpoint string, body any
 		}
 		r = bytes.NewReader(b)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, "https://api.cloudflare.com/client/v4"+endpoint, r)
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+endpoint, r)
 	if err != nil {
 		return err
 	}
@@ -73,19 +84,31 @@ func (c *cfClient) doJSON(ctx context.Context, method, endpoint string, body any
 	return nil
 }
 
+// listZones returns all active zones accessible by the Cloudflare API Token.
+func (c *cfClient) listZones(ctx context.Context) ([]CFZone, error) {
+	var res struct {
+		Success bool     `json:"success"`
+		Result  []CFZone `json:"result"`
+	}
+	if err := c.doJSON(ctx, http.MethodGet, "/zones?status=active&per_page=50", nil, &res); err != nil {
+		return nil, err
+	}
+	if !res.Success {
+		return nil, errors.New("cloudflare returned success=false when listing zones")
+	}
+	return res.Result, nil
+}
+
 // findZoneID walks up domain labels to locate the matching Cloudflare zone.
 func (c *cfClient) findZoneID(ctx context.Context, domain string) (string, error) {
-	parts := strings.Split(strings.TrimSuffix(domain, "."), ".")
+	parts := strings.Split(strings.TrimSuffix(strings.TrimSpace(domain), "."), ".")
 	for i := 0; i < len(parts)-1; i++ {
 		candidate := strings.Join(parts[i:], ".")
 		var res struct {
-			Success bool `json:"success"`
-			Result  []struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"result"`
+			Success bool     `json:"success"`
+			Result  []CFZone `json:"result"`
 		}
-		if err := c.doJSON(ctx, http.MethodGet, "/zones?name="+candidate, nil, &res); err != nil {
+		if err := c.doJSON(ctx, http.MethodGet, "/zones?name="+url.QueryEscape(candidate), nil, &res); err != nil {
 			return "", err
 		}
 		if res.Success && len(res.Result) > 0 {
@@ -93,6 +116,74 @@ func (c *cfClient) findZoneID(ctx context.Context, domain string) (string, error
 		}
 	}
 	return "", fmt.Errorf("cloudflare zone not found for domain %s", domain)
+}
+
+// upsertARecord creates or updates a DNS A record (with proxied=false) for DDNS.
+func (c *cfClient) upsertARecord(ctx context.Context, domain, targetIP string) (string, error) {
+	domain = strings.TrimSuffix(strings.TrimSpace(domain), ".")
+	targetIP = strings.TrimSpace(targetIP)
+	if domain == "" {
+		return "", errors.New("domain is required")
+	}
+	parsedIP := net.ParseIP(targetIP)
+	if parsedIP == nil || parsedIP.To4() == nil {
+		return "", fmt.Errorf("invalid IPv4 address for A record: %q", targetIP)
+	}
+
+	zoneID, err := c.findZoneID(ctx, domain)
+	if err != nil {
+		return "", err
+	}
+
+	var listRes struct {
+		Success bool `json:"success"`
+		Result  []struct {
+			ID      string `json:"id"`
+			Name    string `json:"name"`
+			Content string `json:"content"`
+			Proxied bool   `json:"proxied"`
+		} `json:"result"`
+	}
+	query := fmt.Sprintf("/zones/%s/dns_records?type=A&name=%s", zoneID, url.QueryEscape(domain))
+	if err := c.doJSON(ctx, http.MethodGet, query, nil, &listRes); err != nil {
+		return "", err
+	}
+
+	payload := map[string]any{
+		"type":    "A",
+		"name":    domain,
+		"content": targetIP,
+		"ttl":     60,
+		"proxied": false,
+	}
+
+	if len(listRes.Result) > 0 {
+		existing := listRes.Result[0]
+		if existing.Content == targetIP && !existing.Proxied {
+			return "unchanged", nil
+		}
+		var updRes struct {
+			Success bool `json:"success"`
+		}
+		if err := c.doJSON(ctx, http.MethodPut, "/zones/"+zoneID+"/dns_records/"+existing.ID, payload, &updRes); err != nil {
+			return "", err
+		}
+		if !updRes.Success {
+			return "", errors.New("cloudflare failed to update A record")
+		}
+		return "updated", nil
+	}
+
+	var createRes struct {
+		Success bool `json:"success"`
+	}
+	if err := c.doJSON(ctx, http.MethodPost, "/zones/"+zoneID+"/dns_records", payload, &createRes); err != nil {
+		return "", err
+	}
+	if !createRes.Success {
+		return "", errors.New("cloudflare failed to create A record")
+	}
+	return "created", nil
 }
 
 func (c *cfClient) createTXTRecord(ctx context.Context, zoneID, name, content string) (string, error) {

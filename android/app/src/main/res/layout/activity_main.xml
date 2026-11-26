@@ -11,27 +11,51 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="CarWithin Gateway"
-            android:textColor="#F9FAFB"
-            android:textSize="24sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Root 安卓本地零延迟网关 · 100.64.0.1 劫持 + 正规 HTTPS/WS 反代"
-            android:textColor="#9CA3AF"
-            android:textSize="13sp" />
-
-        <!-- Status Card -->
+        <!-- 标题栏 + 教程按钮 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tesla CarWithin 本地网关"
+                    android:textColor="#F9FAFB"
+                    android:textSize="21sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="按 1 → 2 → 3 → 4 顺序配置，零公网视频流量直连"
+                    android:textColor="#9CA3AF"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnShowGuide"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:backgroundTint="#1E3A8A"
+                android:text="使用教程"
+                android:textColor="#EFF6FF"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- 运行状态总览卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
             android:background="#111827"
             android:orientation="vertical"
             android:padding="14dp">
@@ -42,191 +66,282 @@
                 android:layout_height="wrap_content"
                 android:text="状态：已停止"
                 android:textColor="#F59E0B"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tvTeslaUrl"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="特斯拉车机地址：请填写域名"
-                android:textColor="#60A5FA"
-                android:textSize="13sp" />
 
             <TextView
                 android:id="@+id/tvUpstream"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="当前上游 (主 iPhone)：未探测"
+                android:text="当前主 iPhone 上游：未探测"
                 android:textColor="#D1D5DB"
                 android:textSize="13sp" />
 
-            <LinearLayout
+            <TextView
+                android:id="@+id/tvTeslaUrl"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btnToggle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="启动网关" />
-
-                <Button
-                    android:id="@+id/btnCopyUrl"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="复制地址" />
-            </LinearLayout>
+                android:layout_marginTop="4dp"
+                android:text="特斯拉车机访问地址：待配置"
+                android:textColor="#60A5FA"
+                android:textSize="13sp" />
         </LinearLayout>
 
-        <!-- Basic Config -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="核心配置"
-            android:textColor="#E5E7EB"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/etDomain"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="#1F2937"
-            android:hint="域名 (如 car.yourdomain.com，A 记录指向 100.64.0.1)"
-            android:inputType="textUri"
-            android:padding="12dp"
-            android:textColor="#F9FAFB"
-            android:textColorHint="#6B7280"
-            android:textSize="14sp" />
-
+        <!-- 步骤 1：Cloudflare API、自定义域名与 DDNS -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal">
+            android:layout_marginTop="14dp"
+            android:background="#111827"
+            android:orientation="vertical"
+            android:padding="14dp">
 
-            <EditText
-                android:id="@+id/etHijackIp"
-                android:layout_width="0dp"
+            <TextView
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:background="#1F2937"
-                android:hint="劫持 IP (默认 100.64.0.1)"
-                android:inputType="text"
-                android:padding="12dp"
-                android:textColor="#F9FAFB"
-                android:textColorHint="#6B7280"
-                android:textSize="14sp" />
+                android:text="第 1 步 · Cloudflare API、自定义域名与 DDNS"
+                android:textColor="#60A5FA"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
-            <EditText
-                android:id="@+id/etListenPort"
-                android:layout_width="110dp"
+            <TextView
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:background="#1F2937"
-                android:hint="端口 8443"
-                android:inputType="number"
-                android:padding="12dp"
-                android:textColor="#F9FAFB"
-                android:textColorHint="#6B7280"
-                android:textSize="14sp" />
-        </LinearLayout>
+                android:layout_marginTop="4dp"
+                android:text="填写具有 Zone:Read + DNS:Edit 权限的 Cloudflare API Token，读取你的域名并自动把自定义子域名 A 记录指向 100.64.0.1（特斯拉放行该保留段）。"
+                android:textColor="#9CA3AF"
+                android:textSize="12sp" />
 
-        <!-- TLS Mode -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="HTTPS 证书模式 (特斯拉要求可信绿锁)"
-            android:textColor="#E5E7EB"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <RadioGroup
-            android:id="@+id/rgTlsMode"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:orientation="horizontal">
-
-            <RadioButton
-                android:id="@+id/rbCloudflare"
-                android:layout_width="wrap_content"
+            <TextView
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:checked="true"
-                android:text="Cloudflare DNS-01 自动申请"
-                android:textColor="#E5E7EB" />
-
-            <RadioButton
-                android:id="@+id/rbManual"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:text="手动导入证书"
-                android:textColor="#E5E7EB" />
-        </RadioGroup>
-
-        <LinearLayout
-            android:id="@+id/layoutCloudflare"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:orientation="vertical">
+                android:layout_marginTop="10dp"
+                android:text="Cloudflare API Token"
+                android:textColor="#D1D5DB"
+                android:textSize="12sp" />
 
             <EditText
                 android:id="@+id/etCfToken"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="#1F2937"
-                android:hint="Cloudflare API Token (Zone:DNS:Edit)"
+                android:hint="粘贴 Cloudflare API Token"
                 android:inputType="textPassword"
-                android:padding="12dp"
                 android:textColor="#F9FAFB"
                 android:textColorHint="#6B7280"
                 android:textSize="14sp" />
 
-            <EditText
-                android:id="@+id/etAcmeEmail"
+            <Button
+                android:id="@+id/btnLoadDomains"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:background="#1F2937"
-                android:hint="Let's Encrypt 邮箱 (可选)"
-                android:inputType="textEmailAddress"
-                android:padding="12dp"
+                android:layout_marginTop="6dp"
+                android:backgroundTint="#1F2937"
+                android:text="读取我的 Cloudflare 域名并选择"
+                android:textColor="#93C5FD"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="自定义完整域名（点上方按钮自动生成，或直接自由填写）"
+                android:textColor="#D1D5DB"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/etDomain"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="例如：car.yourdomain.com"
+                android:inputType="textUri"
                 android:textColor="#F9FAFB"
                 android:textColorHint="#6B7280"
                 android:textSize="14sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/layoutManualCert"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:orientation="vertical"
-            android:visibility="gone">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
                 android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="DDNS 指向 / 劫持 IP"
+                        android:textColor="#D1D5DB"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etHijackIp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="100.64.0.1"
+                        android:inputType="text"
+                        android:textColor="#F9FAFB"
+                        android:textColorHint="#6B7280"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="HTTPS 监听端口"
+                        android:textColor="#D1D5DB"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etListenPort"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="8443"
+                        android:inputType="number"
+                        android:textColor="#F9FAFB"
+                        android:textColorHint="#6B7280"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <CheckBox
+                android:id="@+id/cbAutoDdns"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:checked="true"
+                android:text="启动网关时自动校验并同步 DDNS (A 记录，关闭小黄云)"
+                android:textColor="#D1D5DB"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/btnSyncDdns"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:backgroundTint="#0369A1"
+                android:text="一键同步 Cloudflare DDNS（写入 A 记录）"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tvDdnsStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="DDNS 状态：尚未同步"
+                android:textColor="#9CA3AF"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- 步骤 2：自动化申请 HTTPS 证书 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="#111827"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="第 2 步 · 自动化申请正规 HTTPS 证书"
+                android:textColor="#60A5FA"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="使用第 1 步的 Cloudflare API Token 通过 DNS-01 自动向 Let's Encrypt 申请正规绿锁证书，剩余有效期不足 30 天会自动续期。"
+                android:textColor="#9CA3AF"
+                android:textSize="12sp" />
+
+            <RadioGroup
+                android:id="@+id/rgTlsMode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/rbCloudflare"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:checked="true"
+                    android:text="Cloudflare 自动申请"
+                    android:textColor="#F9FAFB"
+                    android:textSize="13sp" />
+
+                <RadioButton
+                    android:id="@+id/rbManual"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="手动导入 PEM"
+                    android:textColor="#F9FAFB"
+                    android:textSize="13sp" />
+            </RadioGroup>
+
+            <LinearLayout
+                android:id="@+id/layoutCloudflare"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="vertical">
+
+                <EditText
+                    android:id="@+id/etAcmeEmail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="ACME 通知邮箱（可选）"
+                    android:inputType="textEmailAddress"
+                    android:textColor="#F9FAFB"
+                    android:textColorHint="#6B7280"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/btnIssueCert"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:backgroundTint="#047857"
+                    android:text="一键申请 / 检测 Let's Encrypt 证书"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layoutManualCert"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal"
+                android:visibility="gone">
 
                 <Button
                     android:id="@+id/btnImportCert"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="导入 fullchain.pem" />
+                    android:backgroundTint="#374151"
+                    android:text="导入 fullchain.pem"
+                    android:textColor="#F9FAFB"
+                    android:textSize="12sp" />
 
                 <Button
                     android:id="@+id/btnImportKey"
@@ -234,112 +349,258 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:layout_weight="1"
-                    android:text="导入 privkey.pem" />
+                    android:backgroundTint="#374151"
+                    android:text="导入 privkey.pem"
+                    android:textColor="#F9FAFB"
+                    android:textSize="12sp" />
             </LinearLayout>
 
             <TextView
                 android:id="@+id/tvCertStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="证书状态：未导入"
+                android:layout_marginTop="6dp"
+                android:text="证书状态：尚未检测"
                 android:textColor="#9CA3AF"
                 android:textSize="12sp" />
         </LinearLayout>
 
-        <!-- Upstream Discovery -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="主 iPhone (CarWithin) 发现策略"
-            android:textColor="#E5E7EB"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
+        <!-- 步骤 3：设置主 iPhone 目标内网地址（防 IP 变动） -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal">
-
-            <EditText
-                android:id="@+id/etTargetPort"
-                android:layout_width="120dp"
-                android:layout_height="wrap_content"
-                android:background="#1F2937"
-                android:hint="端口 9888"
-                android:inputType="number"
-                android:padding="12dp"
-                android:textColor="#F9FAFB"
-                android:textColorHint="#6B7280"
-                android:textSize="14sp" />
-
-            <EditText
-                android:id="@+id/etTargetMac"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:background="#1F2937"
-                android:hint="可选：主 iPhone MAC 锁定"
-                android:inputType="text"
-                android:padding="12dp"
-                android:textColor="#F9FAFB"
-                android:textColorHint="#6B7280"
-                android:textSize="14sp" />
-        </LinearLayout>
-
-        <EditText
-            android:id="@+id/etManualUpstream"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="#1F2937"
-            android:hint="可选：手动固定上游 IP (留空则自动通过 ip neigh 扫描 9888)"
-            android:inputType="text"
-            android:padding="12dp"
-            android:textColor="#F9FAFB"
-            android:textColorHint="#6B7280"
-            android:textSize="14sp" />
-
-        <!-- Live Logs -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_marginTop="14dp"
+            android:background="#111827"
+            android:orientation="vertical"
+            android:padding="14dp">
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="运行日志"
-                android:textColor="#E5E7EB"
+                android:text="第 3 步 · 主 iPhone 内网目标地址（防 IP 变动）"
+                android:textColor="#60A5FA"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="iPhone 每次重连热点 IP 都可能变动。推荐留空手动 IP：网关每 4 秒自动按 MAC 或 9888 端口追踪主 iPhone 最新内网 IP 并无缝热更新。"
+                android:textColor="#9CA3AF"
+                android:textSize="12sp" />
+
             <Button
-                android:id="@+id/btnClearLogs"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:text="清空"
+                android:id="@+id/btnScanDevices"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:backgroundTint="#1F2937"
+                android:text="扫描当前热点在线设备（点选绑定主 iPhone）"
+                android:textColor="#93C5FD"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="CarWithin 端口"
+                        android:textColor="#D1D5DB"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etTargetPort"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="9888"
+                        android:inputType="number"
+                        android:textColor="#F9FAFB"
+                        android:textColorHint="#6B7280"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="2"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="绑定主 iPhone MAC（推荐，防 IP 变动）"
+                        android:textColor="#D1D5DB"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etTargetMac"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="留空=自动探测 9888 端口"
+                        android:inputType="text"
+                        android:textColor="#F9FAFB"
+                        android:textColorHint="#6B7280"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="手动指定内网 IP（仅临时固定用，留空则启用自动追踪）"
+                android:textColor="#D1D5DB"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/etManualUpstream"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="例如：192.168.43.12（建议留空防变动）"
+                android:inputType="text"
+                android:textColor="#F9FAFB"
+                android:textColorHint="#6B7280"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- 步骤 4：启动本地零延迟网关 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="#111827"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="第 4 步 · 启动网关并在特斯拉打开"
+                android:textColor="#60A5FA"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="确认安卓已开 5 GHz 热点、主 iPhone 与特斯拉均已连上该热点，且主 iPhone 已打开 CarWithin 后点击启动。"
+                android:textColor="#9CA3AF"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnToggle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="2"
+                    android:backgroundTint="#2563EB"
+                    android:text="启动本地网关"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btnCopyUrl"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:backgroundTint="#1F2937"
+                    android:text="复制车机地址"
+                    android:textColor="#D1D5DB"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 简明操作指引卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="#0F172A"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="快速上手要点"
+                android:textColor="#93C5FD"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:lineSpacingExtra="4dp"
+                android:text="1. 在 Cloudflare 创建 API Token（权限：Zone:Read + DNS:Edit），填到第 1 步并同步 DDNS。\n2. 在第 2 步一键申请正规 HTTPS 证书（仅首次需要约 20 秒，后续离线可用）。\n3. 开启本机 5 GHz 热点，让主 iPhone（开 CarWithin）和特斯拉都连上热点。\n4. 主 iPhone 若用 Surge/Loon，把 192.168.43.0/24（或热点网段）加入 skip-proxy 和 tun-excluded-routes / bypass-tun。\n5. 点击第 4 步启动网关，在特斯拉浏览器打开复制好的车机地址即可。"
+                android:textColor="#CBD5E1"
                 android:textSize="12sp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/tvLogs"
+        <!-- 实时运行日志 -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="220dp"
-            android:layout_marginTop="6dp"
-            android:background="#050811"
-            android:fontFamily="monospace"
-            android:padding="10dp"
-            android:scrollbars="vertical"
-            android:text="等待启动...\n"
-            android:textColor="#10B981"
-            android:textSize="11sp" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="#111827"
+            android:orientation="vertical"
+            android:padding="14dp">
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="实时运行日志"
+                    android:textColor="#60A5FA"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btnClearLogs"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:backgroundTint="#1F2937"
+                    android:text="清空"
+                    android:textColor="#9CA3AF"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvLogs"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:layout_marginTop="8dp"
+                android:background="#030712"
+                android:fontFamily="monospace"
+                android:padding="10dp"
+                android:scrollbars="vertical"
+                android:textColor="#10B981"
+                android:textSize="11sp" />
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

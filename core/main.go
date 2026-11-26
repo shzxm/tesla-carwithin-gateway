@@ -10,12 +10,15 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
 
 type Config struct {
 	Domain             string `json:"domain"`
+	DDNSIP             string `json:"ddns_ip"`
+	AutoDDNS           bool   `json:"auto_ddns"`
 	ListenPort         int    `json:"listen_port"`
 	ControlPort        int    `json:"control_port"`
 	InitialUpstream    string `json:"initial_upstream"`
@@ -33,6 +36,8 @@ func loadConfig(path string) (Config, error) {
 		return Config{}, err
 	}
 	cfg := Config{
+		DDNSIP:      "100.64.0.1",
+		AutoDDNS:    true,
 		ListenPort:  8443,
 		ControlPort: 18443,
 		TLSMode:     "cloudflare",
@@ -40,6 +45,9 @@ func loadConfig(path string) (Config, error) {
 	}
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return Config{}, err
+	}
+	if strings.TrimSpace(cfg.DDNSIP) == "" {
+		cfg.DDNSIP = "100.64.0.1"
 	}
 	if cfg.ListenPort <= 0 {
 		cfg.ListenPort = 8443
@@ -52,6 +60,7 @@ func loadConfig(path string) (Config, error) {
 
 func main() {
 	configPath := flag.String("config", "config.json", "Path to gateway JSON config")
+	action := flag.String("action", "serve", "Action: serve | list-zones | ddns | cert")
 	flag.Parse()
 
 	log.SetFlags(log.Ltime | log.Lmicroseconds)
@@ -60,8 +69,82 @@ func main() {
 		log.Fatalf("[core] failed to load config: %v", err)
 	}
 
+	switch strings.ToLower(strings.TrimSpace(*action)) {
+	case "list-zones":
+		runListZones(cfg)
+		return
+	case "ddns":
+		runDDNS(cfg)
+		return
+	case "cert":
+		runCertOnly(cfg)
+		return
+	case "serve", "":
+		runServe(cfg)
+		return
+	default:
+		log.Fatalf("[core] unknown action: %s", *action)
+	}
+}
+
+func runListZones(cfg Config) {
+	if strings.TrimSpace(cfg.CloudflareAPIToken) == "" {
+		log.Fatalf("[cf] cloudflare_api_token is empty")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	zones, err := newCFClient(cfg.CloudflareAPIToken).listZones(ctx)
+	if err != nil {
+		log.Fatalf("[cf] list zones failed: %v", err)
+	}
+	out, _ := json.Marshal(zones)
+	fmt.Println(string(out))
+}
+
+func runDDNS(cfg Config) {
+	if strings.TrimSpace(cfg.CloudflareAPIToken) == "" {
+		log.Fatalf("[ddns] cloudflare_api_token is empty")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+
+	status, err := newCFClient(cfg.CloudflareAPIToken).upsertARecord(ctx, cfg.Domain, cfg.DDNSIP)
+	if err != nil {
+		log.Fatalf("[ddns] sync failed: %v", err)
+	}
+	log.Printf("[ddns] %s -> %s (%s, proxied=false)", cfg.Domain, cfg.DDNSIP, status)
+}
+
+func runCertOnly(cfg Config) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	certMgr := NewCertManager(cfg)
+	if err := certMgr.EnsureLoaded(ctx); err != nil {
+		log.Fatalf("[tls] certificate check/issue failed: %v", err)
+	}
+	if cur := certMgr.GetCurrent(); cur != nil && cur.Leaf != nil {
+		log.Printf("[tls] certificate ready: CN=%s, NotAfter=%s", cur.Leaf.Subject.CommonName, cur.Leaf.NotAfter.Format("2006-01-02"))
+	} else {
+		log.Printf("[tls] certificate ready")
+	}
+}
+
+func runServe(cfg Config) {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	if cfg.AutoDDNS && strings.TrimSpace(cfg.CloudflareAPIToken) != "" && strings.TrimSpace(cfg.Domain) != "" {
+		ddnsCtx, dCancel := context.WithTimeout(ctx, 20*time.Second)
+		status, err := newCFClient(cfg.CloudflareAPIToken).upsertARecord(ddnsCtx, cfg.Domain, cfg.DDNSIP)
+		dCancel()
+		if err != nil {
+			log.Printf("[ddns] auto-sync warning (continuing): %v", err)
+		} else {
+			log.Printf("[ddns] auto-sync ok: %s -> %s (%s)", cfg.Domain, cfg.DDNSIP, status)
+		}
+	}
 
 	certMgr := NewCertManager(cfg)
 	initCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)

@@ -73,11 +73,7 @@ class GatewayService : Service() {
             return
         }
 
-        val dataDir = File(filesDir, "gateway_data").apply { mkdirs() }
-        val certFile = File(filesDir, "manual_fullchain.pem").takeIf { cfg.tlsMode == "manual" }?.absolutePath ?: ""
-        val keyFile = File(filesDir, "manual_privkey.pem").takeIf { cfg.tlsMode == "manual" }?.absolutePath ?: ""
-        val configFile = File(dataDir, "config.json")
-        configFile.writeText(cfg.toCoreJson(dataDir.absolutePath, certFile, keyFile))
+        val configFile = cfg.writeCoreConfigFile(this)
 
         val coreBin = File(applicationInfo.nativeLibraryDir, "libcarwithin_proxy.so")
         if (!coreBin.exists()) {

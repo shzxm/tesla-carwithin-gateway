@@ -1,151 +1,128 @@
 # Tesla CarWithin Gateway (Root Android)
 
-> 把任意一台已 Root 的备用安卓手机，变成**特斯拉 CarWithin 本地零延迟网关**：自动配置 `iptables` 绕过特斯拉内网 IP 黑名单、内置正规 Let's Encrypt HTTPS 绿锁证书（支持 Cloudflare DNS-01 自动申请/续期与手动导入）、零缓冲 WebSocket 反向代理，并自动发现热点下主 iPhone 的 CarWithin 端口。
->
-> **0 公网视频流量 · 100% 车内 5 GHz 局域网直连 · 主 iPhone 的 CarWithin 与 Surge / Loon 完美共存。**
-
----
-
-## 为什么需要这个项目？
-
-在特斯拉车机浏览器中使用主 iPhone 的 CarWithin 投屏时，通常面临三个系统级硬限制：
-
-1. **特斯拉浏览器拦截常见私网 IPv4**：访问 `192.168.x.x`、`172.16-31.x.x`、`10.x.x.x` 会被车机直接阻断。
-2. **WebCodecs 硬件低延迟解码要求正规 HTTPS 绿锁**：自签名证书会被拦截或降级。
-3. **主 iPhone 无法同时优雅地自建网关与运行 Surge / Loon**：未越狱 iOS 个人热点流量绕过代理核心，且车机 Wi-Fi 无法配置代理。
-
-**本项目的解法**：利用一台已 Root 的安卓手机开 5 GHz 热点作为网关，一步到位替代 OpenWrt 便携路由器 + Termux + Caddy：
-
-```text
-┌───────────────────────────┐            5 GHz 热点局域网            ┌─────────────────────────────┐
-│        特斯拉车机          │  ──────────────────────────────────►  │     已 Root 的备用安卓机     │
-│  浏览器打开:               │   DNS 解析 car.<你的域名>              │  1. 开启 5 GHz 个人热点       │
-│  car.<你的域名>:8443       │   -> 100.64.0.1 (CGNAT, 车机放行)      │  2. iptables PREROUTING 劫持  │
-└───────────────────────────┘                                        │     100.64.0.1:8443 -> :8443  │
-              ▲                                                      │  3. 内置 Go HTTPS/WS 反代核心 │
-              │ 蓝牙音频直连                                          │     (Let's Encrypt 绿锁)      │
-              │                                                      └──────────────┬──────────────┘
-┌─────────────┴─────────────┐                                                       │ 局域网零延迟反代
-│        主 iPhone          │  ◄────────────────────────────────────────────────────┘ (自动发现 9888)
-│  CarWithin (:9888)        │
-│  + Surge / Loon 照常运行  │
-└───────────────────────────┘
-```
+> 把任意一台已 Root 的旧安卓手机变成 **特斯拉 CarWithin 零延迟本地 HTTPS/WebSocket 网关**：无需购买 OpenWrt 硬件、无需折腾 Termux / Caddy、不走一字节公网视频流量，同时与主 iPhone 上的 **Surge / Loon** 完美共存。
 
 ---
 
 ## 核心特性
 
-- **一键 Root `iptables` 劫持与自动清理**：启动服务时幂等添加 `PREROUTING REDIRECT`（默认劫持 `100.64.0.1:8443` 到本机 `:8443`）与 `INPUT ACCEPT` 规则，停止服务时自动清理，不留脏规则。
-- **内置高性能 Go 反向代理核心 (`core/`)**：编译为 `arm64-v8a` / `armeabi-v7a` 原生二进制打包在 APK 内，支持 `FlushInterval: -1` 零缓冲转发 HTTP 与 WebSocket 流量，无须安装 Termux 或外部 Caddy。
-- **正规 HTTPS 绿锁证书（两种模式）**：
-  - **Cloudflare DNS-01 自动申请与续期**：填入 Cloudflare API Token（仅需 `Zone:DNS:Edit` 权限），自动向 Let's Encrypt 申请证书并在到期前 30 天内自动续期。
-  - **手动导入证书**：支持通过系统文件选择器直接导入已有的 `fullchain.pem` 与 `privkey.pem`。
-- **主 iPhone IP 自动发现与热更新**：通过 Root `ip -4 neigh show` 实时扫描热点内网邻居，自动探测 `9888` 端口（支持可选 MAC 地址锁定或手动固定 IP），iPhone 重连换 IP 也能秒级自动切换，无须重启网关。
-- **前台服务 + WakeLock 保活**：熄屏放扶手箱也能稳定运行，状态栏实时显示当前上游 IP 与车机访问地址。
+1. **Cloudflare API 域名读取与自定义子域名**
+   - 填入 Cloudflare API Token 后，一键拉取账号下所有托管的根域名，输入前缀（如 `car`）自动生成自定义域名（如 `car.example.com`）。
+2. **内置 Cloudflare DDNS（一键写入 A 记录）**
+   - 自动将自定义域名的 A 记录指向指定非内网保留 IP（默认 `100.64.0.1`，关闭小黄云 `proxied=false`），绕过特斯拉浏览器对 `192.168.x.x` / `10.x.x.x` / `172.16-31.x.x` 的屏蔽。
+   - 支持手动一键同步，也支持每次启动网关时自动校验更新。
+3. **全自动申请 & 续期正规 HTTPS 证书（Let's Encrypt）**
+   - 内置 Go ACME v2 客户端，通过 Cloudflare DNS-01 自动申请正规绿锁证书（无需 80 端口，也不需要公网服务器），本地持久化缓存，剩余不足 30 天自动续期；同时支持手动导入 `fullchain.pem` / `privkey.pem`。
+4. **内网目标 iPhone 地址管理（防 IP 变动）**
+   - 内置 **热点在线设备扫描**：通过 `ip neigh` + `9888` 端口探测一键找出主 iPhone。
+   - 支持 **绑定主 iPhone MAC 地址（推荐）**：即便 iPhone 每次重连热点分配的内网 IP 发生变化，后台每 4 秒自动追踪最新 IP 并热更新反代上游。
+   - 也支持 **手动指定内网 IP** 或 **全自动扫描 9888 端口**。
+5. **零延迟本地反代 + Root iptables 透明劫持**
+   - 启动时自动下发 `iptables` `PREROUTING` + `INPUT` 规则，将车机发往 `100.64.0.1:8443` 的流量直接劫持至本机反代核心；停止时自动清理规则。
+   - Go 零缓冲（`FlushInterval: -1`）HTTP + WebSocket 反向代理，支持特斯拉车机 WebCodecs 硬件低延迟解码，**视频流 100% 走车内 5 GHz Wi-Fi 局域网，0 公网视频流量**。
+6. **App 内置向导式流程与新手教程**
+   - 界面严格按照 **第 1 步 → 第 2 步 → 第 3 步 → 第 4 步** 实际操作顺序排布，内置「使用教程」弹窗及 Surge/Loon 放行规则一键复制。
 
 ---
 
-## 快速上手
-
-### 第一步：配置公网 DNS（一次性）
-
-在你的域名解析商（推荐 Cloudflare）添加一条 `A` 记录：
-
-| 类型 | 名称 | 内容 | 代理状态 |
-| :--- | :--- | :--- | :--- |
-| `A` | `car`（即 `car.<你的域名>`） | `100.64.0.1` | 仅 DNS（关闭小云朵 / 灰云） |
-
-> 说明：`100.64.0.0/10` 是 RFC 6598 保留的 CGNAT 地址段，不在特斯拉浏览器的 RFC 1918 私网黑名单内，车机可直接放行并由安卓机的 `iptables` 在本地无缝劫持，不会产生任何公网视频流量。
-
-### 第二步：准备 HTTPS 证书（二选一）
-
-- **方式 A（推荐，全自动）**：在 Cloudflare 控制台创建一个仅含 `Zone -> DNS -> Edit` 权限的 API Token，填进 App 即可自动申请 Let's Encrypt 证书。
-- **方式 B（手动导入）**：使用任意域名商在电脑/VPS 上通过 `acme.sh` 或 `certbot` 申请好证书，把 `fullchain.pem` 和 `privkey.pem` 拷贝到安卓手机，在 App 中切换“手动导入证书”选择导入。
-
-### 第三步：配置主 iPhone 的 Surge / Loon（防止内网被代理拦截）
-
-将安卓热点网段（通常为 `192.168.43.0/24` 或 `192.168.0.0/16`）加入排除规则：
-
-- **Surge (`[General]`)**：
-  ```ini
-  skip-proxy = 127.0.0.1, 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, localhost, *.local
-  tun-excluded-routes = 192.168.0.0/16
-  ```
-- **Loon (`[General]`)**：
-  ```ini
-  skip-proxy = 127.0.0.1, 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, localhost, *.local
-  bypass-tun = 192.168.0.0/16
-  ```
-
-### 第四步：安装并启动 CarWithin Gateway
-
-1. 从本仓库的 **[Releases](../../releases)**（或 Actions 构建产物）下载 `CarWithinGateway-universal.apk` 并安装到已 Root（Magisk / KernelSU / APatch）的安卓手机。
-2. 开启安卓手机的 **5 GHz 个人热点**（建议插副卡保持外网，特斯拉连有外网的 Wi-Fi 最稳定）。
-3. 打开 **CarWithin Gateway** App：
-   - 填写你的域名（例如 `car.<你的域名>`）；
-   - 保持劫持 IP 为 `100.64.0.1`，监听端口 `8443`；
-   - 填入 Cloudflare API Token（或导入手动证书）；
-   - 点击 **启动网关** 并授予 Root 权限。
-4. 主 iPhone 与特斯拉车机均连上该 5 GHz 热点，主 iPhone 打开 CarWithin（蓝牙连车机出声音）。
-5. 特斯拉车机浏览器打开 `https://` + `car.<你的域名>:8443`，即可享受正规绿锁 + 本地 5 GHz 零延迟投屏！
-
----
-
-## 工程结构
+## 网络拓扑
 
 ```text
-.
-├── core/                         # Go 高性能 HTTPS + WebSocket 反代与 ACME 核心
-│   ├── main.go                   # 启动入口、TLS 配置与本地控制 API
-│   ├── proxy.go                  # 零缓冲 HTTP/WebSocket 反代与热更新引擎
-│   ├── cert.go                   # 证书加载、热重载与自动续期循环
-│   ├── acme_cloudflare.go        # Let's Encrypt ACME v2 Cloudflare DNS-01 实现
-│   └── proxy_test.go             # HTTP / WebSocket / 证书单元测试
-├── android/                      # Kotlin Android 外壳应用
-│   └── app/src/main/java/com/shzxm/carwithingateway/
-│       ├── MainActivity.kt       # 配置界面、证书导入与实时日志
-│       ├── GatewayService.kt     # 前台保活服务、核心进程托管与上游热更新
-│       ├── RootIptables.kt       # Root iptables 规则幂等应用与清理
-│       ├── UpstreamDiscovery.kt  # ip neigh + 9888 端口自动发现
-│       ├── GatewayConfig.kt      # 配置持久化与 JSON 生成
-│       └── GatewayLog.kt         # 内存日志与状态流
-├── scripts/
-│   └── build-core.sh             # Go 核心 Android arm64/armv7 交叉编译脚本
-└── .github/workflows/
-    └── build-release.yml         # GitHub Actions 自动测试、编译与 Release 发布
+[ 主 iPhone ] (CarWithin :9888 + Surge/Loon 放行热点网段)
+      │ 5 GHz Wi-Fi 局域网               │ 蓝牙 (负责车内声音输出)
+      ▼                                 ▼
+[ Root 安卓机 ] (开 5 GHz 热点 + 本 App) ◄── 5 GHz Wi-Fi ──► [ 特斯拉车机浏览器 ]
+  ├─ Cloudflare DDNS: <你的域名> -> 100.64.0.1                打开 https://<你的域名>:8443
+  ├─ Root iptables: 100.64.0.1:8443 -> 本机 :8443             (正规 Let's Encrypt 绿锁)
+  ├─ Go HTTPS/WS 反代: :8443 -> 主 iPhone 内网 IP:9888
+  └─ 自动追踪主 iPhone 最新内网 IP（按 MAC / 9888 端口）
 ```
 
 ---
 
-## 本地自行编译
+## 手把手使用教程（按顺序操作）
 
-前置依赖：Go 1.23+、JDK 17、Android SDK（API 34）。
+### 准备工作
+- 一台已 Root（Magisk / KernelSU / APatch）的安卓手机，建议插一张有流量的卡并开启 **5 GHz 个人热点**（特斯拉连有外网的 Wi-Fi 最稳定不易断开）。
+- 从本仓库 **Releases** 页面下载最新 APK 并安装到 Root 安卓机。
+- 一个托管在 Cloudflare 的域名，并创建 API Token：
+  1. 登录 Cloudflare Dashboard → 右上角头像 → **My Profile** → **API Tokens** → **Create Token**。
+  2. 选择 **Edit zone DNS** 模板（需包含 `Zone:Zone:Read` 和 `Zone:DNS:Edit` 权限）。
+  3. 生成并复制 Token。
+
+---
+
+### 第 1 步：填写 Cloudflare API Token、自定义域名并同步 DDNS
+1. 打开 App，在 **第 1 步** 粘贴刚才创建的 **Cloudflare API Token**。
+2. 点击 **「读取我的 Cloudflare 域名并选择」**，在弹出的列表里点选你的根域名，输入前缀（如 `car`），自动填入完整自定义域名（如 `car.example.com`）。
+3. 确认 **DDNS 指向 / 劫持 IP** 为 `100.64.0.1`（或自定义其他非内网 IP），**HTTPS 监听端口** 为 `8443`。
+4. 点击 **「一键同步 Cloudflare DDNS（写入 A 记录）」**，看到绿色「已同步」提示即可。
+
+---
+
+### 第 2 步：一键自动化申请正规 HTTPS 证书
+1. 保持默认的 **Cloudflare 自动申请** 模式（可按需填写 ACME 通知邮箱）。
+2. 点击 **「一键申请 / 检测 Let's Encrypt 证书」**，等待约 20 秒完成 DNS-01 验证。
+3. 看到绿色 **「证书状态：已就绪」** 即可（证书保存在本地，后续无外网也能正常提供 HTTPS 服务，到期前自动续期）。
+
+> 如需使用自有证书，可切换为「手动导入 PEM」，分别选择 `fullchain.pem` 与 `privkey.pem`。
+
+---
+
+### 第 3 步：设置主 iPhone 内网目标地址（防 IP 变动）
+1. 在 Root 安卓上开启 **5 GHz 个人热点**。
+2. 主 iPhone 连上该热点，并打开 **CarWithin**（默认端口 `9888`）。
+3. 回到 App **第 3 步**，点击 **「扫描当前热点在线设备」**：
+   - 在列表中找到带有 **`★ 已发现 CarWithin (9888)`** 标记的主 iPhone。
+   - 点击它并选择 **「绑定 MAC（推荐，iPhone IP 变了自动追踪）」**。
+   - 如果希望临时固定某个内网 IP，也可以选择填入固定 IP。
+
+#### 主 iPhone 使用 Surge / Loon 的必做配置
+为防止 CarWithin 的 `9888` 端口被代理软件 TUN 接管，将安卓热点网段（通常为 `192.168.43.0/24`）加入放行：
+
+**Surge (`[General]`):**
+```ini
+skip-proxy = 127.0.0.1, 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, localhost, *.local
+tun-excluded-routes = 192.168.43.0/24, 192.168.0.0/16
+```
+
+**Loon (`[General]`):**
+```ini
+skip-proxy = 127.0.0.1, 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, localhost, *.local
+bypass-tun = 192.168.43.0/24, 192.168.0.0/16
+```
+> 在 App 右上角 **「使用教程」** 弹窗中也可一键复制上述规则。
+
+---
+
+### 第 4 步：启动网关并在特斯拉打开
+1. 点击 **「启动本地网关」**（首次会弹出 Root 授权提示，请点击允许）。
+2. 状态栏变为绿色运行中，确认「当前主 iPhone 上游」已显示为 `http://192.168.x.x:9888`。
+3. 特斯拉车机连上安卓的 5 GHz 热点，打开车机浏览器访问复制好的地址：
+   ```text
+   https://<你的自定义域名>:8443
+   ```
+4. 主 iPhone 蓝牙连接特斯拉负责音频输出，即可享受正规绿锁、低延迟、零公网视频流量的无线 CarPlay！
+
+---
+
+## 本地构建与开发
+
+本项目采用 **Go 高性能反代核心 (`core/`) + Kotlin Android 外壳 (`android/`)** 架构：
 
 ```bash
-# 1. 运行 Go 核心单元测试
-cd core && go test -v ./... && cd ..
+# 1. 运行 Go 核心单元测试（代理、WebSocket 透传、Cloudflare DDNS、TLS）
+cd core && go test -v ./...
 
-# 2. 交叉编译 Go 核心到 android/app/src/main/jniLibs/
-./scripts/build-core.sh
+# 2. 交叉编译 Android arm64-v8a / armeabi-v7a 核心二进制
+cd .. && ./scripts/build-core.sh
 
-# 3. 编译 Android APK
+# 3. 编译 Android Release APK（需 JDK 17 + Android SDK）
 cd android && gradle assembleRelease
 ```
 
 ---
 
-## 常见问题排查
+## 免责声明与开源协议
 
-1. **首次启动 Cloudflare DNS-01 申请证书较慢？**
-   - 首次申请会在 Cloudflare 添加 `_acme-challenge` TXT 记录并等待约 15 秒 DNS 传播，成功后证书保存在 App 私有目录，后续启动秒开，到期前自动续期。
-2. **车机打开提示“CarWithin 本地网关已就绪 / 未发现主 iPhone”？**
-   - 说明 `iptables` 劫持和 HTTPS 绿锁都已成功！请检查主 iPhone 是否已连上安卓热点、CarWithin 是否在前台启动、以及 Surge / Loon 是否已排除 `192.168.0.0/16`。
-3. **部分安卓 ROM 热点会隔离客户端（AP 隔离）？**
-   - 绝大多数原生/类原生/小米/一加热点默认不开启 AP 隔离；若发现安卓机自身能通主 iPhone 但车机或反代异常，可在日志中查看 `[discovery]` 输出确认能否探测到 `9888` 端口。
-
----
-
-## 开源协议
-
-本项目基于 [MIT License](LICENSE) 开源。
+本项目基于 [MIT License](LICENSE) 开源，仅用于个人局域网网络工具学习与合法合规的本地连接用途。行车时请注意道路安全，遵守当地交通法规。

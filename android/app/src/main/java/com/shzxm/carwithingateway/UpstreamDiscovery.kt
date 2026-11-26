@@ -12,6 +12,7 @@ data class NeighborEntry(
     val ip: String,
     val mac: String,
     val state: String,
+    val portOpen: Boolean = false,
 )
 
 object UpstreamDiscovery {
@@ -33,7 +34,6 @@ object UpstreamDiscovery {
             }
         }
 
-        // Probe all reachable/stale LAN neighbors concurrently for open CarWithin port
         val found = coroutineScope {
             entries.map { entry ->
                 async(Dispatchers.IO) {
@@ -45,11 +45,27 @@ object UpstreamDiscovery {
         found?.let { "http://$it:$targetPort" }
     }
 
+    /**
+     * Lists all current hotspot LAN neighbors and marks which ones have `targetPort` open.
+     */
+    suspend fun scanNeighbors(targetPort: Int): List<NeighborEntry> = withContext(Dispatchers.IO) {
+        val entries = readNeighbors()
+        if (entries.isEmpty()) return@withContext emptyList()
+        coroutineScope {
+            entries.map { entry ->
+                async(Dispatchers.IO) {
+                    entry.copy(portOpen = isPortOpen(entry.ip, targetPort, 350))
+                }
+            }.awaitAll()
+        }.sortedByDescending { it.portOpen }
+    }
+
     private fun readNeighbors(): List<NeighborEntry> {
         val res = RootIptables.runRoot("ip -4 neigh show")
         if (res.exitCode != 0 || res.stdout.isBlank()) return emptyList()
 
         val result = mutableListOf<NeighborEntry>()
+        val seen = mutableSetOf<String>()
         res.stdout.lineSequence().forEach { rawLine ->
             val parts = rawLine.trim().split(Regex("\\s+"))
             if (parts.isEmpty()) return@forEach
@@ -61,7 +77,10 @@ object UpstreamDiscovery {
 
             val lladdrIdx = parts.indexOf("lladdr")
             val mac = if (lladdrIdx >= 0 && lladdrIdx + 1 < parts.size) parts[lladdrIdx + 1] else ""
-            result.add(NeighborEntry(ip = ip, mac = mac, state = state))
+            val key = "$ip|$mac"
+            if (seen.add(key)) {
+                result.add(NeighborEntry(ip = ip, mac = mac, state = state))
+            }
         }
         return result
     }
