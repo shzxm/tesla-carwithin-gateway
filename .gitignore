@@ -1,0 +1,17 @@
+# OS & IDE
+.DS_Store
+.idea/
+*.iml
+local.properties
+
+# Android / Gradle build outputs
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/jniLibs/
+
+# Go build outputs
+core/carwithin-gateway-core
+*.pem
+*.key
+config.json
